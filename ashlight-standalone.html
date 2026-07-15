@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASHLIGHT — Station Ashlight-7 // Operation Lastlight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --void: #04050a;
+  --panel: #0b0f1a;
+  --panel-line: rgba(255,140,66,0.28);
+  --ember: #ff8c42;
+  --ember-dim: #a3410f;
+  --teal: #2dd4bf;
+  --glow: #fff5ea;
+  --critical: #f87171;
+  --text: #cfd8ea;
+  --text-dim: #7d8bab;
+  --font-display: 'Orbitron', sans-serif;
+  --font-body: 'Rajdhani', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{ height:100%; }
+body{
+  background: var(--void);
+  color: var(--text);
+  font-family: var(--font-body);
+  overflow-x:hidden;
+  min-height:100vh;
+  position:relative;
+}
+.hidden{ display:none !important; }
+
+/* ============ AMBIENT BACKGROUND ============ */
+#stars{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:
+    radial-gradient(1.4px 1.4px at 10% 15%, #fff 100%, transparent),
+    radial-gradient(1.2px 1.2px at 25% 60%, #fff 100%, transparent),
+    radial-gradient(1.6px 1.6px at 40% 30%, #fff 100%, transparent),
+    radial-gradient(1.2px 1.2px at 55% 80%, #fff 100%, transparent),
+    radial-gradient(1.4px 1.4px at 70% 20%, #fff 100%, transparent),
+    radial-gradient(1.2px 1.2px at 85% 65%, #fff 100%, transparent),
+    radial-gradient(1.6px 1.6px at 15% 90%, #fff 100%, transparent),
+    radial-gradient(1.2px 1.2px at 95% 40%, #fff 100%, transparent),
+    radial-gradient(1.4px 1.4px at 60% 55%, #fff 100%, transparent),
+    radial-gradient(1.2px 1.2px at 33% 12%, #fff 100%, transparent);
+  opacity:0.4;
+}
+.glow{ position:fixed; border-radius:50%; pointer-events:none; z-index:0; }
+.glow-ember{ top:-200px; right:-200px; width:500px; height:500px;
+  background:radial-gradient(circle, rgba(255,140,66,0.13) 0%, transparent 70%); }
+.glow-teal{ bottom:-220px; left:-220px; width:540px; height:540px;
+  background:radial-gradient(circle, rgba(45,212,191,0.10) 0%, transparent 70%); }
+
+/* ============ BOOT SCREEN ============ */
+#boot-screen{
+  position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+  background: radial-gradient(ellipse at center, #0b0f1a 0%, var(--void) 75%);
+}
+.boot-inner{ text-align:center; max-width:520px; padding:32px; animation: fadeUp 0.9s ease both; }
+.boot-star{ filter: drop-shadow(0 0 24px rgba(255,140,66,0.55)); animation: pulse 3s ease-in-out infinite; }
+.boot-title{
+  font-family:var(--font-display); font-weight:800; font-size:clamp(2.4rem,7vw,3.4rem);
+  letter-spacing:6px; color:var(--glow); margin-top:18px;
+  text-shadow:0 0 30px rgba(255,140,66,0.45);
+}
+.boot-sub{ font-size:0.95rem; color:var(--ember); letter-spacing:1px; margin-top:8px; font-family:var(--font-mono); }
+.boot-line{ font-family:var(--font-mono); font-size:0.8rem; color:var(--text-dim); margin-top:22px; min-height:1.2em; }
+.boot-hint{ font-size:0.85rem; color:var(--text-dim); margin-top:18px; line-height:1.5; }
+
+.btn-primary{
+  margin-top:22px; font-family:var(--font-mono); letter-spacing:2px; font-size:0.85rem;
+  color:#0a0e1a; background:linear-gradient(135deg, var(--ember), #ffb347);
+  border:none; padding:14px 34px; border-radius:6px; cursor:pointer;
+  box-shadow:0 0 28px rgba(255,140,66,0.35);
+  transition:transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-primary:hover{ transform:translateY(-2px); box-shadow:0 4px 34px rgba(255,140,66,0.5); }
+.btn-primary:active{ transform:translateY(0); }
+
+.btn-ghost{
+  font-family:var(--font-mono); font-size:0.7rem; letter-spacing:1px; color:var(--text-dim);
+  background:transparent; border:1px solid rgba(255,255,255,0.15); padding:6px 12px; border-radius:14px;
+  cursor:pointer; margin-top:6px; transition:color 0.15s ease, border-color 0.15s ease;
+}
+.btn-ghost:hover{ color:var(--teal); border-color:rgba(45,212,191,0.5); }
+.btn-ghost.active{ color:var(--teal); border-color:var(--teal); }
+
+/* ============ LAYOUT ============ */
+#console{ position:relative; z-index:1; min-height:100vh; display:flex; flex-direction:column; padding:18px 22px 22px; }
+
+.hud-header{
+  display:flex; align-items:center; justify-content:space-between; gap:18px;
+  border:1px solid var(--panel-line); background:rgba(11,15,26,0.7); border-radius:10px;
+  padding:14px 22px; backdrop-filter:blur(6px);
+}
+.header-left{ display:flex; align-items:center; gap:14px; flex:1; min-width:0; }
+.station-id{ font-family:var(--font-display); font-size:1rem; letter-spacing:2px; color:var(--glow); }
+.station-sub{ font-family:var(--font-mono); font-size:0.7rem; color:var(--text-dim); margin-top:3px; }
+
+.header-center{ flex:1.4; max-width:340px; }
+.luminance-label{ font-family:var(--font-mono); font-size:0.65rem; letter-spacing:2px; color:var(--teal); margin-bottom:6px; }
+.luminance-bar-wrap{ height:10px; border-radius:6px; background:rgba(255,255,255,0.08); overflow:hidden; border:1px solid rgba(255,255,255,0.1); }
+.luminance-bar{ height:100%; width:100%; background:linear-gradient(90deg, var(--ember), #ffcf7a); transition:width 0.6s ease, background 0.6s ease; }
+.luminance-value{ font-family:var(--font-mono); font-size:0.8rem; color:var(--ember); margin-top:5px; text-align:right; }
+
+.header-right{ text-align:right; }
+.clock-label{ font-family:var(--font-mono); font-size:0.65rem; letter-spacing:2px; color:var(--text-dim); }
+.clock-value{ font-family:var(--font-display); font-size:1.3rem; color:var(--glow); letter-spacing:1px; }
+
+/* ============ MAIN GRID ============ */
+.hud-grid{
+  display:grid; grid-template-columns: 250px 1fr 280px; gap:16px; margin-top:16px; flex:1; min-height:0;
+}
+.panel{
+  border:1px solid var(--panel-line); background:rgba(11,15,26,0.6); border-radius:10px; padding:16px;
+  backdrop-filter:blur(6px); display:flex; flex-direction:column; min-height:0;
+}
+.panel-title{
+  font-family:var(--font-mono); font-size:0.72rem; letter-spacing:2px; color:var(--teal);
+  text-transform:uppercase; margin-bottom:4px;
+}
+.panel-sub{ font-size:0.78rem; color:var(--text-dim); margin-bottom:12px; }
+
+/* ---- Power panel ---- */
+.power-dials{ display:flex; flex-direction:column; gap:14px; margin-top:6px; }
+.dial-row{ display:flex; align-items:center; gap:10px; }
+.dial-svg{ flex-shrink:0; }
+.dial-info{ flex:1; min-width:0; }
+.dial-label{ font-family:var(--font-mono); font-size:0.75rem; letter-spacing:1px; }
+.dial-pct{ font-family:var(--font-mono); font-size:0.85rem; margin-top:2px; }
+.dial-controls{ display:flex; gap:6px; margin-top:6px; }
+.dial-btn{
+  width:24px; height:22px; border-radius:4px; border:1px solid rgba(255,255,255,0.15);
+  background:rgba(255,255,255,0.04); color:var(--text); font-family:var(--font-mono); cursor:pointer;
+  font-size:0.8rem; transition:background 0.15s ease, border-color 0.15s ease;
+}
+.dial-btn:hover{ background:rgba(255,140,66,0.15); border-color:var(--ember); }
+.power-total{ margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08); font-family:var(--font-mono); font-size:0.78rem; color:var(--text-dim); }
+.power-warn{ color:var(--critical); margin-left:6px; }
+
+/* ---- Starmap ---- */
+.panel-map{ align-items:center; }
+.starmap{ width:100%; max-width:420px; flex:1; }
+.ring{ fill:none; stroke:rgba(45,212,191,0.28); stroke-width:1; }
+.crosshair{ stroke:rgba(45,212,191,0.16); stroke-width:1; }
+.ship-icon{ cursor:pointer; }
+.ship-dot{ fill:#a8ffef; stroke:#0b0f1a; stroke-width:1.5; }
+.ship-dot.warn{ fill:var(--ember); }
+.ship-dot.distress{ fill:var(--critical); }
+.ship-label{ font-family:var(--font-mono); font-size:8px; fill:#a8ffef; }
+.anomaly{ fill:var(--critical); opacity:0.85; cursor:pointer; }
+.anomaly-ring{ fill:none; stroke:var(--critical); stroke-width:1; opacity:0.5; }
+
+/* ---- Comms panel ---- */
+.panel-comms{ overflow:hidden; }
+.event-feed{ flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px; max-height:220px; }
+.event-item{
+  font-family:var(--font-mono); font-size:0.72rem; padding:6px 8px; border-left:2px solid var(--teal);
+  background:rgba(255,255,255,0.03); border-radius:0 4px 4px 0; animation: slideIn 0.3s ease both;
+  line-height:1.4;
+}
+.event-item.warn{ border-left-color:var(--ember); }
+.event-item.critical{ border-left-color:var(--critical); }
+.event-time{ color:var(--text-dim); margin-right:6px; }
+.log-divider{ font-family:var(--font-mono); font-size:0.68rem; letter-spacing:2px; color:var(--ember); margin:14px 0 8px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; }
+.keeper-log{ flex-shrink:0; max-height:130px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+.keeper-line{ font-size:0.82rem; font-style:italic; color:var(--ember-glow, #ffcf9e); line-height:1.45; animation: fadeUp 0.4s ease both; }
+
+.event-feed::-webkit-scrollbar, .keeper-log::-webkit-scrollbar{ width:5px; }
+.event-feed::-webkit-scrollbar-thumb, .keeper-log::-webkit-scrollbar-thumb{ background:rgba(255,140,66,0.3); border-radius:4px; }
+
+/* ---- Convoy strip ---- */
+.convoy-strip{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:16px; }
+.ship-card{
+  border:1px solid var(--panel-line); background:rgba(11,15,26,0.6); border-radius:10px; padding:12px 16px;
+  backdrop-filter:blur(6px); transition:border-color 0.3s ease;
+}
+.ship-card.distress{ border-color:var(--critical); box-shadow:0 0 16px rgba(248,113,113,0.25); }
+.ship-card.through{ border-color:var(--teal); opacity:0.7; }
+.ship-card-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.ship-name{ font-family:var(--font-mono); font-size:0.8rem; letter-spacing:1px; color:var(--glow); }
+.ship-status{ font-family:var(--font-mono); font-size:0.65rem; letter-spacing:1px; padding:2px 8px; border-radius:10px; }
+.ship-status.ok{ color:var(--teal); background:rgba(45,212,191,0.1); }
+.ship-status.warn{ color:var(--ember); background:rgba(255,140,66,0.1); }
+.ship-status.distress{ color:var(--critical); background:rgba(248,113,113,0.12); }
+.ship-status.through{ color:var(--teal); background:rgba(45,212,191,0.1); }
+.ship-meta{ display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:0.7rem; color:var(--text-dim); margin-bottom:6px; }
+.hull-bar-wrap{ height:6px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; }
+.hull-bar{ height:100%; background:linear-gradient(90deg, var(--teal), #7dfff0); transition:width 0.5s ease, background 0.5s ease; }
+
+/* ============ MODAL ============ */
+.modal-overlay{
+  position:fixed; inset:0; z-index:80; background:rgba(4,5,10,0.82); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center; padding:20px; animation:fadeIn 0.25s ease both;
+}
+.modal-box{
+  width:100%; max-width:440px; background:var(--panel); border:1px solid var(--ember); border-radius:12px;
+  padding:26px 28px; box-shadow:0 0 50px rgba(255,140,66,0.25); animation: popIn 0.3s ease both;
+}
+.modal-tag{ font-family:var(--font-mono); font-size:0.68rem; letter-spacing:2px; color:var(--critical); margin-bottom:8px; }
+.modal-title{ font-family:var(--font-display); font-size:1.15rem; color:var(--glow); letter-spacing:1px; margin-bottom:10px; }
+.modal-desc{ font-size:0.9rem; color:var(--text); line-height:1.5; margin-bottom:16px; }
+.modal-timer-wrap{ height:4px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; margin-bottom:18px; }
+.modal-timer-bar{ height:100%; background:var(--critical); width:100%; transition:width 0.1s linear; }
+.modal-choices{ display:flex; flex-direction:column; gap:10px; }
+.modal-choice-btn{
+  text-align:left; font-family:var(--font-body); font-size:0.9rem; font-weight:600; color:var(--glow);
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.14); border-radius:8px;
+  padding:12px 14px; cursor:pointer; transition:background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.modal-choice-btn:hover{ background:rgba(45,212,191,0.1); border-color:var(--teal); transform:translateX(3px); }
+.modal-choice-sub{ display:block; font-family:var(--font-mono); font-size:0.7rem; color:var(--text-dim); margin-top:4px; font-weight:400; }
+
+/* ---- End screen ---- */
+.end-box{ text-align:center; max-width:460px; }
+.end-icon{ font-size:2.4rem; color:var(--teal); margin-bottom:10px; }
+.end-title{ font-family:var(--font-display); font-size:1.5rem; letter-spacing:2px; color:var(--glow); margin-bottom:10px; }
+.end-desc{ font-size:0.92rem; color:var(--text); line-height:1.55; margin-bottom:16px; }
+.end-stats{ font-family:var(--font-mono); font-size:0.78rem; color:var(--text-dim); display:flex; flex-direction:column; gap:4px; margin-bottom:6px; }
+
+/* ============ ANIMATIONS ============ */
+@keyframes fadeUp{ from{ opacity:0; transform:translateY(14px);} to{ opacity:1; transform:translateY(0);} }
+@keyframes fadeIn{ from{ opacity:0;} to{ opacity:1;} }
+@keyframes popIn{ from{ opacity:0; transform:scale(0.94);} to{ opacity:1; transform:scale(1);} }
+@keyframes slideIn{ from{ opacity:0; transform:translateX(-6px);} to{ opacity:1; transform:translateX(0);} }
+@keyframes pulse{ 0%,100%{ transform:scale(1); opacity:1;} 50%{ transform:scale(1.05); opacity:0.9;} }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; }
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 980px){
+  .hud-grid{ grid-template-columns:1fr; }
+  .convoy-strip{ grid-template-columns:1fr; }
+  .hud-header{ flex-wrap:wrap; }
+  .header-center{ order:3; max-width:none; width:100%; }
+}
+
+</style>
+</head>
+<body>
+
+<div id="stars"></div>
+<div class="glow glow-ember"></div>
+<div class="glow glow-teal"></div>
+
+<!-- ============ BOOT SCREEN ============ -->
+<div id="boot-screen">
+  <div class="boot-inner">
+    <svg class="boot-star" width="90" height="90" viewBox="0 0 90 90">
+      <circle cx="45" cy="45" r="42" fill="none" stroke="#ff8c42" stroke-width="0.6" opacity="0.4"/>
+      <circle cx="45" cy="45" r="30" fill="#a3410f"/>
+      <circle cx="42" cy="42" r="22" fill="#ff8c42"/>
+      <circle cx="38" cy="38" r="11" fill="#ffe3ba"/>
+    </svg>
+    <h1 class="boot-title">ASHLIGHT</h1>
+    <p class="boot-sub">Lighthouse Station Ashlight-7 &middot; Operation Lastlight</p>
+    <p class="boot-line" id="boot-log">Establishing relay link&hellip;</p>
+    <button id="boot-start" class="btn-primary">BEGIN WATCH</button>
+    <p class="boot-hint">Guide 3 convoy ships through the Wayline before Ember Vel's light runs out.</p>
+  </div>
+</div>
+
+<!-- ============ MAIN CONSOLE ============ -->
+<div id="console" class="hidden">
+
+  <!-- HEADER -->
+  <header class="hud-header">
+    <div class="header-left">
+      <svg id="star-viz" width="56" height="56" viewBox="0 0 90 90">
+        <circle cx="45" cy="45" r="42" fill="none" stroke="#ff8c42" stroke-width="0.6" opacity="0.4"/>
+        <circle id="star-outer" cx="45" cy="45" r="30" fill="#a3410f"/>
+        <circle id="star-mid" cx="42" cy="42" r="22" fill="#ff8c42"/>
+        <circle id="star-core" cx="38" cy="38" r="11" fill="#ffe3ba"/>
+      </svg>
+      <div>
+        <div class="station-id">STATION ASHLIGHT-7</div>
+        <div class="station-sub">Anchor Star: Ember Vel &middot; Cradle Corridor 7</div>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="luminance-label">STORED LUMINANCE</div>
+      <div class="luminance-bar-wrap">
+        <div id="luminance-bar" class="luminance-bar"></div>
+      </div>
+      <div class="luminance-value"><span id="luminance-num">100</span>%</div>
+    </div>
+
+    <div class="header-right">
+      <div class="clock-label">MISSION CLOCK</div>
+      <div id="clock" class="clock-value">00:00</div>
+      <button id="sound-toggle" class="btn-ghost" title="Toggle ambient hum">🔈 SOUND</button>
+    </div>
+  </header>
+
+  <!-- MAIN GRID -->
+  <main class="hud-grid">
+
+    <!-- LEFT: POWER ALLOCATION -->
+    <section class="panel panel-power">
+      <h2 class="panel-title">POWER ALLOCATION</h2>
+      <p class="panel-sub">Distribute Luminance output across station systems.</p>
+      <div id="power-dials" class="power-dials"></div>
+      <div class="power-total">
+        Allocated: <span id="power-total-val">100</span>%
+        <span id="power-warn" class="power-warn"></span>
+      </div>
+    </section>
+
+    <!-- CENTER: STARMAP -->
+    <section class="panel panel-map">
+      <h2 class="panel-title">WAYLINE STARMAP</h2>
+      <svg id="starmap" viewBox="0 0 400 400" class="starmap">
+        <circle cx="200" cy="200" r="180" class="ring"/>
+        <circle cx="200" cy="200" r="130" class="ring"/>
+        <circle cx="200" cy="200" r="80" class="ring"/>
+        <line x1="200" y1="20" x2="200" y2="380" class="crosshair"/>
+        <line x1="20" y1="200" x2="380" y2="200" class="crosshair"/>
+        <g id="star-core-map">
+          <circle cx="200" cy="200" r="10" fill="#ff8c42"/>
+          <circle cx="200" cy="200" r="18" fill="none" stroke="#ff8c42" stroke-width="1" opacity="0.5"/>
+        </g>
+        <g id="ships-layer"></g>
+        <g id="anomalies-layer"></g>
+      </svg>
+    </section>
+
+    <!-- RIGHT: COMMS & LOG -->
+    <section class="panel panel-comms">
+      <h2 class="panel-title">COMMS &amp; LOG</h2>
+      <div id="event-feed" class="event-feed"></div>
+      <div class="log-divider">LIGHTKEEPER'S LOG</div>
+      <div id="keeper-log" class="keeper-log"></div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM: CONVOY STATUS -->
+  <footer class="convoy-strip" id="convoy-strip"></footer>
+
+</div>
+
+<!-- ============ DECISION MODAL ============ -->
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-tag" id="modal-tag">EVENT</div>
+    <h3 id="modal-title" class="modal-title">—</h3>
+    <p id="modal-desc" class="modal-desc">—</p>
+    <div class="modal-timer-wrap">
+      <div id="modal-timer-bar" class="modal-timer-bar"></div>
+    </div>
+    <div class="modal-choices" id="modal-choices"></div>
+  </div>
+</div>
+
+<!-- ============ END SCREEN ============ -->
+<div id="end-screen" class="modal-overlay hidden">
+  <div class="modal-box end-box">
+    <div id="end-icon" class="end-icon">✦</div>
+    <h2 id="end-title" class="end-title">—</h2>
+    <p id="end-desc" class="end-desc">—</p>
+    <div id="end-stats" class="end-stats"></div>
+    <button id="restart-btn" class="btn-primary">RESET WATCH</button>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   ASHLIGHT — Operation Lastlight
+   Config-driven so new systems / ship types / event types can be added
+   without touching the simulation logic. Built with the Evolution
+   Challenge in mind from hour one.
+   ========================================================================== */
+
+// ---------------- CONFIG ----------------
+
+const SYSTEMS = [
+  { id: 'beacon',     label: 'BEACON',     color: '#ff8c42', min: 0, max: 100, step: 10,
+    desc: 'Guides ships along the safe path. Low power stalls their progress.' },
+  { id: 'shield',     label: 'SHIELD',     color: '#2dd4bf', min: 0, max: 100, step: 10,
+    desc: 'Absorbs flare damage. Low power lets hull damage through.' },
+  { id: 'stabilizer', label: 'STABILIZER', color: '#ffcf9e', min: 0, max: 100, step: 10,
+    desc: 'Slows Luminance decay. Low power drains the station faster.' },
+];
+
+const SHIP_NAMES = ['DRIFT-01', 'DRIFT-02', 'DRIFT-03'];
+
+const EVENT_TYPES = [
+  {
+    type: 'distress', tag: 'DISTRESS SIGNAL', severity: 'critical',
+    title: (s) => `Distress signal — ${s.name}`,
+    desc: (s) => `${s.name} reports engine strain and is falling behind the convoy formation.`,
+    choices: [
+      { label: 'Divert power to their engines', sub: '+15 progress · −8 Luminance',
+        apply: (state, s) => { s.progress += 15; state.luminance -= 8; return `${s.name} surges forward on emergency power.`; } },
+      { label: 'Hold formation, let them catch up', sub: 'safer on power · risks their hull',
+        apply: (state, s) => { s.hull -= 10; return `${s.name} limps along under their own power.`; } },
+    ],
+    timeoutChoice: 1,
+  },
+  {
+    type: 'flare', tag: 'STELLAR FLARE', severity: 'warn',
+    title: () => 'Stellar flare burst incoming',
+    desc: () => 'Ember Vel is venting a flare pulse toward the corridor. All in-transit ships are exposed.',
+    choices: [
+      { label: 'Reroute power to Shield', sub: 'reduces damage · −6 Luminance',
+        apply: (state) => {
+          const mitig = state.power.shield / 100;
+          state.luminance -= 6;
+          state.ships.forEach(s => { if (s.status !== 'through') s.hull -= Math.round(6 * (1 - mitig)); });
+          return 'Shield flexes to absorb the worst of it.';
+        } },
+      { label: 'Ride it out', sub: 'saves Luminance · full exposure',
+        apply: (state) => {
+          const mitig = state.power.shield / 100;
+          state.ships.forEach(s => { if (s.status !== 'through') s.hull -= Math.round(18 * (1 - mitig)); });
+          return 'The flare washes over the convoy unshielded.';
+        } },
+    ],
+    timeoutChoice: 1,
+  },
+  {
+    type: 'debris', tag: 'WAYLINE ANOMALY', severity: 'warn',
+    title: (s) => `Debris field near ${s.name}`,
+    desc: (s) => `Drifting wreckage has entered ${s.name}'s path. Manual reroute or trust the Beacon to compensate.`,
+    choices: [
+      { label: 'Manually reroute their course', sub: '+5 progress · −4 Luminance',
+        apply: (state, s) => { s.progress += 5; state.luminance -= 4; return `${s.name} threads the debris on manual control.`; } },
+      { label: 'Let the Beacon handle it', sub: 'free · may stall their progress',
+        apply: (state, s) => { s.stalled = 2; return `${s.name} slows to navigate the field automatically.`; } },
+    ],
+    timeoutChoice: 1,
+  },
+];
+
+const KEEPER_LINES = {
+  start: "Log start. Ember Vel is dimming faster than the charts predicted. Three ships, one corridor, no backup coming.",
+  firstEvent: "First real test of the watch. Steady hands.",
+  shipThrough: (s) => `${s.name} clears the corridor. One less light to keep.`,
+  lowLuminance: "Luminance under 30%. Every allocation from here on is a choice about what we're willing to lose.",
+  allThrough: "All three ships through. Ember Vel can rest now. So can I.",
+  luminanceZero: "The light is gone. Whatever's still out there in the dark — I couldn't reach them in time.",
+};
+
+const TICK_MS = 1000;
+const BASE_DECAY = 0.9;
+const MODAL_TIMEOUT_MS = 12000;
+const EVENT_MIN_GAP = 7; // ticks
+const EVENT_CHANCE = 0.22; // per tick after min gap
+
+// ---------------- STATE ----------------
+
+let state = null;
+let tickTimer = null;
+let modalTimer = null;
+let audioCtx = null, oscNodes = null, soundOn = false;
+
+function freshState() {
+  return {
+    luminance: 100,
+    power: { beacon: 40, shield: 30, stabilizer: 30 },
+    elapsedTicks: 0,
+    ticksSinceEvent: 0,
+    ships: SHIP_NAMES.map((name, i) => ({
+      id: 'ship-' + i,
+      name,
+      progress: 0,           // 0 -> 100
+      hull: 100,
+      status: 'ok',          // ok | warn | distress | through | lost
+      stalled: 0,
+      angleOffset: (i / SHIP_NAMES.length) * Math.PI * 2,
+      angularDrift: 0.05 + Math.random() * 0.03,
+    })),
+    activeModal: null,
+    ended: false,
+    log: [],
+  };
+}
+
+// ---------------- INIT ----------------
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildPowerDials();
+  document.getElementById('boot-start').addEventListener('click', startMission);
+  document.getElementById('restart-btn').addEventListener('click', () => location.reload());
+  document.getElementById('sound-toggle').addEventListener('click', toggleSound);
+  bootLog();
+});
+
+function bootLog() {
+  const lines = [
+    'Establishing relay link…',
+    'Syncing Wayline telemetry…',
+    'Reading Ember Vel decay curve…',
+    'Station Ashlight-7 online.',
+  ];
+  const el = document.getElementById('boot-log');
+  let i = 0;
+  el.textContent = lines[0];
+  const iv = setInterval(() => {
+    i++;
+    if (i >= lines.length) { clearInterval(iv); return; }
+    el.textContent = lines[i];
+  }, 650);
+}
+
+function startMission() {
+  document.getElementById('boot-screen').classList.add('hidden');
+  document.getElementById('console').classList.remove('hidden');
+  state = freshState();
+  renderAll();
+  pushLog(KEEPER_LINES.start, 'keeper');
+  tickTimer = setInterval(tick, TICK_MS);
+}
+
+// ---------------- POWER DIALS ----------------
+
+function buildPowerDials() {
+  const wrap = document.getElementById('power-dials');
+  wrap.innerHTML = '';
+  SYSTEMS.forEach(sys => {
+    const row = document.createElement('div');
+    row.className = 'dial-row';
+    row.innerHTML = `
+      <svg class="dial-svg" width="52" height="52" viewBox="0 0 52 52">
+        <circle cx="26" cy="26" r="21" fill="none" stroke="${sys.color}" stroke-width="5" opacity="0.2"/>
+        <circle id="ring-${sys.id}" cx="26" cy="26" r="21" fill="none" stroke="${sys.color}" stroke-width="5"
+          stroke-linecap="round" transform="rotate(-90 26 26)" stroke-dasharray="0 132"/>
+      </svg>
+      <div class="dial-info">
+        <div class="dial-label" style="color:${sys.color}">${sys.label}</div>
+        <div class="dial-pct"><span id="pct-${sys.id}">0</span>%</div>
+        <div class="dial-controls">
+          <button class="dial-btn" data-sys="${sys.id}" data-dir="-1">−</button>
+          <button class="dial-btn" data-sys="${sys.id}" data-dir="1">+</button>
+        </div>
+      </div>
+    `;
+    wrap.appendChild(row);
+  });
+  wrap.addEventListener('click', (e) => {
+    const btn = e.target.closest('.dial-btn');
+    if (!btn || !state || state.ended) return;
+    adjustPower(btn.dataset.sys, parseInt(btn.dataset.dir, 10));
+  });
+}
+
+function adjustPower(sysId, dir) {
+  const sys = SYSTEMS.find(s => s.id === sysId);
+  const current = state.power[sysId];
+  const total = totalPower();
+  if (dir > 0 && total >= 100) return; // pool full
+  const next = Math.min(sys.max, Math.max(sys.min, current + dir * sys.step));
+  state.power[sysId] = next;
+  renderPower();
+}
+
+function totalPower() {
+  return SYSTEMS.reduce((sum, s) => sum + state.power[s.id], 0);
+}
+
+function renderPower() {
+  SYSTEMS.forEach(sys => {
+    const val = state.power[sys.id];
+    document.getElementById('pct-' + sys.id).textContent = val;
+    const ring = document.getElementById('ring-' + sys.id);
+    const circumference = 2 * Math.PI * 21;
+    const filled = (val / 100) * circumference;
+    ring.setAttribute('stroke-dasharray', `${filled} ${circumference}`);
+  });
+  const total = totalPower();
+  document.getElementById('power-total-val').textContent = total;
+  const warnEl = document.getElementById('power-warn');
+  warnEl.textContent = total < 70 ? '⚠ UNDERPOWERED' : '';
+}
+
+// ---------------- TICK / SIMULATION ----------------
+
+function tick() {
+  if (!state || state.ended) return;
+  state.elapsedTicks++;
+  state.ticksSinceEvent++;
+
+  // Luminance decay
+  const stabBonus = (state.power.stabilizer / 100) * 0.6;
+  const underpowerPenalty = totalPower() < 70 ? 0.4 : 0;
+  state.luminance -= (BASE_DECAY - stabBonus + underpowerPenalty);
+  state.luminance = Math.max(0, state.luminance);
+
+  // Ship progress
+  const beaconRate = 0.5 + (state.power.beacon / 100) * 1.8;
+  state.ships.forEach(s => {
+    if (s.status === 'through' || s.status === 'lost') return;
+    if (s.stalled > 0) { s.stalled--; return; }
+    s.progress = Math.min(100, s.progress + beaconRate);
+    s.hull = Math.max(0, s.hull);
+    if (s.progress >= 100) {
+      s.status = 'through';
+      pushLog(`${s.name} has cleared the Wayline corridor.`, 'ok');
+      pushLog(KEEPER_LINES.shipThrough(s), 'keeper');
+    } else if (s.hull <= 25) {
+      s.status = 'distress';
+    } else if (s.hull <= 55) {
+      s.status = 'warn';
+    } else {
+      s.status = 'ok';
+    }
+  });
+
+  // Random events
+  if (!state.activeModal && state.ticksSinceEvent >= EVENT_MIN_GAP && Math.random() < EVENT_CHANCE) {
+    maybeSpawnEvent();
+  }
+
+  // Keeper commentary thresholds
+  if (state.luminance <= 30 && !state._lowWarned) {
+    state._lowWarned = true;
+    pushLog(KEEPER_LINES.lowLuminance, 'keeper');
+  }
+
+  checkEndConditions();
+  renderAll();
+}
+
+function maybeSpawnEvent() {
+  const candidates = state.ships.filter(s => s.status !== 'through' && s.status !== 'lost');
+  if (candidates.length === 0) return;
+  const evType = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
+  const ship = candidates[Math.floor(Math.random() * candidates.length)];
+  state.ticksSinceEvent = 0;
+  openModal(evType, ship);
+  if (!state._firstEventLogged) {
+    state._firstEventLogged = true;
+    pushLog(KEEPER_LINES.firstEvent, 'keeper');
+  }
+}
+
+function checkEndConditions() {
+  const allThrough = state.ships.every(s => s.status === 'through');
+  if (allThrough) {
+    endMission(true);
+    return;
+  }
+  if (state.luminance <= 0) {
+    endMission(false);
+  }
+}
+
+// ---------------- MODAL ----------------
+
+function openModal(evType, ship) {
+  state.activeModal = { evType, ship };
+  const overlay = document.getElementById('modal-overlay');
+  const tagEl = document.getElementById('modal-tag');
+  const titleEl = document.getElementById('modal-title');
+  const descEl = document.getElementById('modal-desc');
+  const choicesEl = document.getElementById('modal-choices');
+
+  tagEl.textContent = evType.tag;
+  tagEl.style.color = evType.severity === 'critical' ? 'var(--critical)' : 'var(--ember)';
+  titleEl.textContent = evType.title(ship);
+  descEl.textContent = evType.desc(ship);
+  pushLog(`${evType.tag} — ${evType.title(ship)}`, evType.severity);
+
+  choicesEl.innerHTML = '';
+  evType.choices.forEach((choice, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'modal-choice-btn';
+    btn.innerHTML = `${choice.label}<span class="modal-choice-sub">${choice.sub}</span>`;
+    btn.addEventListener('click', () => resolveModal(idx));
+    choicesEl.appendChild(btn);
+  });
+
+  overlay.classList.remove('hidden');
+
+  const bar = document.getElementById('modal-timer-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  requestAnimationFrame(() => {
+    bar.style.transition = `width ${MODAL_TIMEOUT_MS}ms linear`;
+    bar.style.width = '0%';
+  });
+  modalTimer = setTimeout(() => resolveModal(evType.timeoutChoice, true), MODAL_TIMEOUT_MS);
+}
+
+function resolveModal(choiceIdx, timedOut) {
+  if (!state.activeModal) return;
+  clearTimeout(modalTimer);
+  const { evType, ship } = state.activeModal;
+  const choice = evType.choices[choiceIdx];
+  const resultLine = choice.apply(state, ship);
+  pushLog((timedOut ? '[auto-resolved] ' : '') + resultLine, timedOut ? 'warn' : 'ok');
+  ship.hull = Math.max(0, Math.min(100, ship.hull));
+  state.luminance = Math.max(0, Math.min(100, state.luminance));
+  state.activeModal = null;
+  document.getElementById('modal-overlay').classList.add('hidden');
+  renderAll();
+  checkEndConditions();
+}
+
+// ---------------- END STATES ----------------
+
+function endMission(won) {
+  state.ended = true;
+  clearInterval(tickTimer);
+  clearTimeout(modalTimer);
+  pushLog(won ? KEEPER_LINES.allThrough : KEEPER_LINES.luminanceZero, 'keeper');
+
+  const overlay = document.getElementById('end-screen');
+  const icon = document.getElementById('end-icon');
+  const title = document.getElementById('end-title');
+  const desc = document.getElementById('end-desc');
+  const stats = document.getElementById('end-stats');
+
+  const through = state.ships.filter(s => s.status === 'through').length;
+  const time = formatClock(state.elapsedTicks);
+
+  if (won) {
+    icon.textContent = '✦';
+    icon.style.color = 'var(--teal)';
+    title.textContent = 'FLEET THROUGH';
+    desc.textContent = 'All three convoy ships cleared the Wayline corridor. Ember Vel holds, for now.';
+  } else {
+    icon.textContent = '☾';
+    icon.style.color = 'var(--critical)';
+    title.textContent = 'LUMINANCE LOST';
+    desc.textContent = 'Ember Vel went dark before the fleet could clear the corridor.';
+  }
+  stats.innerHTML = `
+    <div>SHIPS THROUGH: ${through} / ${SHIP_NAMES.length}</div>
+    <div>MISSION TIME: ${time}</div>
+    <div>FINAL LUMINANCE: ${Math.round(state.luminance)}%</div>
+  `;
+  overlay.classList.remove('hidden');
+}
+
+// ---------------- RENDER ----------------
+
+function renderAll() {
+  if (!state) return;
+  renderHeader();
+  renderPower();
+  renderStarmap();
+  renderConvoy();
+  renderFeed();
+}
+
+function renderHeader() {
+  const lum = Math.round(state.luminance);
+  document.getElementById('luminance-num').textContent = lum;
+  const bar = document.getElementById('luminance-bar');
+  bar.style.width = lum + '%';
+  bar.style.background = lum < 30
+    ? 'linear-gradient(90deg,#f87171,#ff8c42)'
+    : 'linear-gradient(90deg, var(--ember), #ffcf7a)';
+
+  document.getElementById('clock').textContent = formatClock(state.elapsedTicks);
+
+  // star dims as luminance falls
+  const t = lum / 100;
+  document.getElementById('star-outer').setAttribute('opacity', 0.4 + 0.6 * t);
+  document.getElementById('star-mid').setAttribute('opacity', 0.3 + 0.7 * t);
+  document.getElementById('star-core').setAttribute('opacity', 0.2 + 0.8 * t);
+}
+
+function renderStarmap() {
+  const layer = document.getElementById('ships-layer');
+  layer.innerHTML = '';
+  const cx = 200, cy = 200;
+  state.ships.forEach(s => {
+    if (s.status === 'through') return;
+    const radius = 180 - (s.progress / 100) * 155;
+    const angle = s.angleOffset + state.elapsedTicks * s.angularDrift * 0.05;
+    const x = cx + radius * Math.cos(angle);
+    const y = cy + radius * Math.sin(angle);
+    const cls = s.status === 'distress' ? 'distress' : (s.status === 'warn' ? 'warn' : '');
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'ship-icon');
+    g.innerHTML = `
+      <circle cx="${x}" cy="${y}" r="6" class="ship-dot ${cls}"/>
+      <text x="${x + 9}" y="${y + 3}" class="ship-label">${s.name}</text>
+    `;
+    layer.appendChild(g);
+  });
+}
+
+function renderConvoy() {
+  const strip = document.getElementById('convoy-strip');
+  strip.innerHTML = '';
+  state.ships.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'ship-card ' + (s.status === 'distress' ? 'distress' : '') + (s.status === 'through' ? ' through' : '');
+    const statusLabel = { ok: 'NOMINAL', warn: 'WARNING', distress: 'DISTRESS', through: 'THROUGH' }[s.status];
+    card.innerHTML = `
+      <div class="ship-card-top">
+        <div class="ship-name">${s.name}</div>
+        <div class="ship-status ${s.status}">${statusLabel}</div>
+      </div>
+      <div class="ship-meta">
+        <span>PROGRESS: ${Math.round(s.progress)}%</span>
+        <span>HULL: ${Math.round(s.hull)}%</span>
+      </div>
+      <div class="hull-bar-wrap"><div class="hull-bar" style="width:${Math.max(0,s.hull)}%; background:${s.hull < 30 ? 'linear-gradient(90deg,#f87171,#ff8c42)' : ''}"></div></div>
+    `;
+    strip.appendChild(card);
+  });
+}
+
+function renderFeed() {
+  const feed = document.getElementById('event-feed');
+  feed.innerHTML = '';
+  state.log.filter(l => l.kind !== 'keeper').slice(-14).reverse().forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'event-item ' + (entry.kind === 'critical' ? 'critical' : entry.kind === 'warn' ? 'warn' : '');
+    div.innerHTML = `<span class="event-time">${entry.time}</span>${entry.text}`;
+    feed.appendChild(div);
+  });
+
+  const keeper = document.getElementById('keeper-log');
+  keeper.innerHTML = '';
+  state.log.filter(l => l.kind === 'keeper').slice(-5).forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'keeper-line';
+    div.textContent = '"' + entry.text + '"';
+    keeper.appendChild(div);
+  });
+  keeper.scrollTop = keeper.scrollHeight;
+}
+
+function pushLog(text, kind) {
+  state.log.push({ text, kind, time: formatClock(state.elapsedTicks) });
+}
+
+function formatClock(ticks) {
+  const totalSec = ticks;
+  const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+  const s = (totalSec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+// ---------------- AMBIENT SOUND (optional, no audio files needed) ----------------
+
+function toggleSound() {
+  soundOn = !soundOn;
+  const btn = document.getElementById('sound-toggle');
+  btn.classList.toggle('active', soundOn);
+  btn.textContent = soundOn ? '🔊 SOUND' : '🔈 SOUND';
+  if (soundOn) startHum(); else stopHum();
+}
+
+function startHum() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc1.type = 'sine'; osc1.frequency.value = 55;
+    osc2.type = 'sine'; osc2.frequency.value = 82.5;
+    gain.gain.value = 0.025;
+    osc1.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination);
+    osc1.start(); osc2.start();
+    oscNodes = { osc1, osc2, gain };
+  } catch (e) { /* audio unsupported, fail silently */ }
+}
+
+function stopHum() {
+  if (oscNodes) {
+    oscNodes.osc1.stop(); oscNodes.osc2.stop();
+    oscNodes = null;
+  }
+}
+
+</script>
+</body>
+</html>

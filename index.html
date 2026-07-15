@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASHLIGHT — Station Ashlight-7 // Operation Lastlight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="stars"></div>
+<div class="glow glow-ember"></div>
+<div class="glow glow-teal"></div>
+
+<!-- ============ BOOT SCREEN ============ -->
+<div id="boot-screen">
+  <div class="boot-inner">
+    <svg class="boot-star" width="90" height="90" viewBox="0 0 90 90">
+      <circle cx="45" cy="45" r="42" fill="none" stroke="#ff8c42" stroke-width="0.6" opacity="0.4"/>
+      <circle cx="45" cy="45" r="30" fill="#a3410f"/>
+      <circle cx="42" cy="42" r="22" fill="#ff8c42"/>
+      <circle cx="38" cy="38" r="11" fill="#ffe3ba"/>
+    </svg>
+    <h1 class="boot-title">ASHLIGHT</h1>
+    <p class="boot-sub">Lighthouse Station Ashlight-7 &middot; Operation Lastlight</p>
+    <p class="boot-line" id="boot-log">Establishing relay link&hellip;</p>
+    <button id="boot-start" class="btn-primary">BEGIN WATCH</button>
+    <p class="boot-hint">Guide 3 convoy ships through the Wayline before Ember Vel's light runs out.</p>
+  </div>
+</div>
+
+<!-- ============ MAIN CONSOLE ============ -->
+<div id="console" class="hidden">
+
+  <!-- HEADER -->
+  <header class="hud-header">
+    <div class="header-left">
+      <svg id="star-viz" width="56" height="56" viewBox="0 0 90 90">
+        <circle cx="45" cy="45" r="42" fill="none" stroke="#ff8c42" stroke-width="0.6" opacity="0.4"/>
+        <circle id="star-outer" cx="45" cy="45" r="30" fill="#a3410f"/>
+        <circle id="star-mid" cx="42" cy="42" r="22" fill="#ff8c42"/>
+        <circle id="star-core" cx="38" cy="38" r="11" fill="#ffe3ba"/>
+      </svg>
+      <div>
+        <div class="station-id">STATION ASHLIGHT-7</div>
+        <div class="station-sub">Anchor Star: Ember Vel &middot; Cradle Corridor 7</div>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="luminance-label">STORED LUMINANCE</div>
+      <div class="luminance-bar-wrap">
+        <div id="luminance-bar" class="luminance-bar"></div>
+      </div>
+      <div class="luminance-value"><span id="luminance-num">100</span>%</div>
+    </div>
+
+    <div class="header-right">
+      <div class="clock-label">MISSION CLOCK</div>
+      <div id="clock" class="clock-value">00:00</div>
+      <button id="sound-toggle" class="btn-ghost" title="Toggle ambient hum">🔈 SOUND</button>
+    </div>
+  </header>
+
+  <!-- MAIN GRID -->
+  <main class="hud-grid">
+
+    <!-- LEFT: POWER ALLOCATION -->
+    <section class="panel panel-power">
+      <h2 class="panel-title">POWER ALLOCATION</h2>
+      <p class="panel-sub">Distribute Luminance output across station systems.</p>
+      <div id="power-dials" class="power-dials"></div>
+      <div class="power-total">
+        Allocated: <span id="power-total-val">100</span>%
+        <span id="power-warn" class="power-warn"></span>
+      </div>
+    </section>
+
+    <!-- CENTER: STARMAP -->
+    <section class="panel panel-map">
+      <h2 class="panel-title">WAYLINE STARMAP</h2>
+      <svg id="starmap" viewBox="0 0 400 400" class="starmap">
+        <circle cx="200" cy="200" r="180" class="ring"/>
+        <circle cx="200" cy="200" r="130" class="ring"/>
+        <circle cx="200" cy="200" r="80" class="ring"/>
+        <line x1="200" y1="20" x2="200" y2="380" class="crosshair"/>
+        <line x1="20" y1="200" x2="380" y2="200" class="crosshair"/>
+        <g id="star-core-map">
+          <circle cx="200" cy="200" r="10" fill="#ff8c42"/>
+          <circle cx="200" cy="200" r="18" fill="none" stroke="#ff8c42" stroke-width="1" opacity="0.5"/>
+        </g>
+        <g id="ships-layer"></g>
+        <g id="anomalies-layer"></g>
+      </svg>
+    </section>
+
+    <!-- RIGHT: COMMS & LOG -->
+    <section class="panel panel-comms">
+      <h2 class="panel-title">COMMS &amp; LOG</h2>
+      <div id="event-feed" class="event-feed"></div>
+      <div class="log-divider">LIGHTKEEPER'S LOG</div>
+      <div id="keeper-log" class="keeper-log"></div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM: CONVOY STATUS -->
+  <footer class="convoy-strip" id="convoy-strip"></footer>
+
+</div>
+
+<!-- ============ DECISION MODAL ============ -->
+<div id="modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-tag" id="modal-tag">EVENT</div>
+    <h3 id="modal-title" class="modal-title">—</h3>
+    <p id="modal-desc" class="modal-desc">—</p>
+    <div class="modal-timer-wrap">
+      <div id="modal-timer-bar" class="modal-timer-bar"></div>
+    </div>
+    <div class="modal-choices" id="modal-choices"></div>
+  </div>
+</div>
+
+<!-- ============ END SCREEN ============ -->
+<div id="end-screen" class="modal-overlay hidden">
+  <div class="modal-box end-box">
+    <div id="end-icon" class="end-icon">✦</div>
+    <h2 id="end-title" class="end-title">—</h2>
+    <p id="end-desc" class="end-desc">—</p>
+    <div id="end-stats" class="end-stats"></div>
+    <button id="restart-btn" class="btn-primary">RESET WATCH</button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
