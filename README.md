@@ -11,7 +11,7 @@ Station Ashlight-7 orbits a dying star, Ember Vel. A Driftfleet of 3 refugee shi
 
 ## Live Demo
 
-**Deployed link:** _[add your live URL here after deploying — see below]_
+**Deployed link:** https://arpanthebaap.github.io/ashlight/
 
 ## Screens & Modules
 
