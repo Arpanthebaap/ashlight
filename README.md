@@ -50,43 +50,6 @@ python3 -m http.server 8000
 
 Or just open `index.html` directly in a browser (as long as `style.css` and `script.js` are still next to it) — no server dependency at all.
 
-## Deploying (pick one — all are free and take under 2 minutes)
-
-**Netlify (drag-and-drop, fastest):**
-1. Go to [app.netlify.com/drop](https://app.netlify.com/drop)
-2. Drag the whole `ashlight-dashboard` folder onto the page
-3. Copy the live URL it gives you into this README and your submission form
-
-**Vercel:**
-1. `npm i -g vercel` (one-time)
-2. From inside the project folder: `vercel --prod`
-3. Follow the prompts — no config needed for a static site
-
-**GitHub Pages:**
-1. Push this folder to a public GitHub repo
-2. Repo → Settings → Pages → Deploy from branch → `main` → `/ (root)`
-3. Your live link will be `https://<username>.github.io/<repo-name>/`
-
-## Pushing to GitHub
-
-```bash
-cd ashlight-dashboard
-git init
-git add .
-git commit -m "ASHLIGHT — Operation Lastlight, Round 2 submission"
-git branch -M main
-git remote add origin <your-empty-repo-url>
-git push -u origin main
-```
-
-## Evolution Challenge Readiness
-
-If the surprise Evolution Challenge introduces a new mechanic, the fastest path is almost always:
-1. Add a new entry to `SYSTEMS`, `SHIP_NAMES`, or `EVENT_TYPES` in `script.js`
-2. If it's a wholly new panel, copy the pattern of an existing `.panel` block in `index.html`/`style.css`
-
-No part of the simulation loop needs to change for additive content.
-
 ---
 
 *Built during Stellar Hack: The Vibe-a-thon, 15–16 July 2026.*
