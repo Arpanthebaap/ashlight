@@ -11,44 +11,46 @@ Station Ashlight-7 orbits a dying star, Ember Vel. A Driftfleet of 3 refugee shi
 
 ## Live Demo
 
-**Deployed link:** https://arpanthebaap.github.io/ashlight/
+**Deployed link:** _[add your live URL here after deploying — see below]_
 
 ## Screens & Modules
 
 | Module | What it does |
 |---|---|
-| **Header** | Station status, animated Ember Vel star that visibly dims as Luminance falls, mission clock |
-| **Power Allocation** | Three dials (Beacon / Shield / Stabilizer) drawing from a shared 100% power pool |
-| **Wayline Starmap** | Live radar view — ships spiral from the outer ring toward the station as they make progress |
-| **Comms & Log** | Color-coded event feed plus the "Lightkeeper's Log" — short narrative lines that react to your choices |
+| **Boot Screen** | A Three.js hero star — faceted, glowing, orbited by drifting ember particles — sets the tone before the mission even starts. Falls back gracefully to a 2D SVG version if WebGL/ES modules aren't available. |
+| **Header** | Station status, a continuously-pulsing star that visibly dims as Luminance falls, mission clock |
+| **Power Allocation** | Three dials (Beacon / Shield / Stabilizer) drawing from a shared 100% power pool, with GSAP-animated smooth fills |
+| **Wayline Starmap** | Live radar view — ships move with continuous GSAP-tweened motion between ticks instead of snapping, and spiral from the outer ring toward the station as they make progress |
+| **Comms & Log** | Color-coded event feed plus the "Lightkeeper's Log" — new entries animate in with a stagger, older entries stay put |
 | **Convoy Status Cards** | Per-ship progress, hull integrity, and status (Nominal / Warning / Distress / Through) |
-| **Decision Modal** | Branching two-choice events (distress signals, flares, debris) with a live countdown — no response auto-resolves to the riskier option |
+| **Decision Modal** | Branching two-choice events with a GSAP elastic entrance and a proper exit animation, plus a live countdown — no response auto-resolves to the riskier option |
+| **Screen Feedback** | A subtle screen-shake + red vignette pulse on stellar flares and when Luminance first crosses the critical threshold |
 
 ## Why It's Built This Way
 
-Every system, ship, and event type lives in a config object at the top of `script.js` (`SYSTEMS`, `SHIP_NAMES`, `EVENT_TYPES`). The simulation loop reads from these configs rather than hardcoding behavior — so a new power system, a new ship class, or a brand-new event type can be added as **data**, not a rebuild. This was a deliberate choice going into Round 2 with the Evolution Challenge in mind.
+Every system, ship, and event type lives in a config object at the top of `script.js` (`SYSTEMS`, `SHIP_NAMES`, `EVENT_TYPES`). The simulation loop reads from these configs rather than hardcoding behavior — so a new power system, a new ship class, or a brand-new event type can be added as **data**, not a rebuild.
+
+All GSAP tweens respect `prefers-reduced-motion` — if a judge's or user's system has that set, animations fall back to instant state changes automatically, no separate code path to maintain.
 
 ## Tech Stack
 
-Plain **HTML / CSS / JavaScript** — no build step, no dependencies, no framework overhead. Chosen deliberately: it keeps the entire simulation inspectable in one file, deploys instantly to any static host, and removes any risk of a build failing at demo time.
-
-- `index.html` — structure
-- `style.css` — full design system (tokens, layout, animation)
-- `script.js` — game state, simulation loop, rendering
+- **HTML / CSS / JavaScript** — no build step, no bundler, no framework overhead for the core app
+- **GSAP** (`vendor/gsap.min.js`) — smooth ship movement, power dial fills, modal/end-screen entrances and exits, event feed stagger, screen-shake feedback
+- **Three.js** (`vendor/three.module.min.js` + `vendor/three.core.min.js`) — the boot screen's hero star, loaded as a native ES module (`boot-star.js`), no bundler required
+- Both libraries are vendored locally rather than pulled from a CDN, so the deployed site has zero external runtime dependencies and zero risk of a CDN outage during judging
 - Fonts: Orbitron (display), Rajdhani (body), Share Tech Mono (data/log) via Google Fonts
 
 ## Running Locally
 
-**Important:** `index.html`, `style.css`, and `script.js` must stay together in the same folder — the page loads the CSS and JS as separate files by relative path. If you only have `index.html` on its own (for example, a single file downloaded outside its folder), it will load unstyled. For that situation, use `ashlight-standalone.html` instead — it's the identical dashboard with everything inlined into one file, safe to open on its own from anywhere.
+**Important:** `index.html`, `style.css`, `script.js`, `boot-star.js`, and the `vendor/` folder must all stay together in the same directory structure — the page loads several of these as separate files by relative path, and `boot-star.js` specifically requires being served over `http://` or `https://` (a browser security restriction on ES module scripts blocks them under `file://`, regardless of what's in the folder).
 
-No install required either way. From the project folder:
-
+For the full experience including the 3D boot star:
 ```bash
 python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
-Or just open `index.html` directly in a browser (as long as `style.css` and `script.js` are still next to it) — no server dependency at all.
+For a quick look with zero setup (no server, open directly from anywhere), use `ashlight-standalone.html` instead. It's the same dashboard and the same GSAP-powered gameplay, bundled into one file — the only difference is the boot star renders as its 2D SVG version rather than the 3D one, since the 3D star's module script can't run under `file://` no matter how it's packaged. Every actual game mechanic is identical between the two.
 
 ## Deploying (pick one — all are free and take under 2 minutes)
 

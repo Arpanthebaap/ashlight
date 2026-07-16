@@ -18,12 +18,15 @@
 <!-- ============ BOOT SCREEN ============ -->
 <div id="boot-screen">
   <div class="boot-inner">
-    <svg class="boot-star" width="90" height="90" viewBox="0 0 90 90">
-      <circle cx="45" cy="45" r="42" fill="none" stroke="#ff8c42" stroke-width="0.6" opacity="0.4"/>
-      <circle cx="45" cy="45" r="30" fill="#a3410f"/>
-      <circle cx="42" cy="42" r="22" fill="#ff8c42"/>
-      <circle cx="38" cy="38" r="11" fill="#ffe3ba"/>
-    </svg>
+    <div class="boot-star-wrap">
+      <svg id="boot-star-fallback" class="boot-star" width="220" height="220" viewBox="0 0 90 90">
+        <circle cx="45" cy="45" r="42" fill="none" stroke="#ff8c42" stroke-width="0.6" opacity="0.4"/>
+        <circle cx="45" cy="45" r="30" fill="#a3410f"/>
+        <circle cx="42" cy="42" r="22" fill="#ff8c42"/>
+        <circle cx="38" cy="38" r="11" fill="#ffe3ba"/>
+      </svg>
+      <div id="boot-star-canvas" class="boot-star-canvas"></div>
+    </div>
     <h1 class="boot-title">ASHLIGHT</h1>
     <p class="boot-sub">Lighthouse Station Ashlight-7 &middot; Operation Lastlight</p>
     <p class="boot-line" id="boot-log">Establishing relay link&hellip;</p>
@@ -136,6 +139,10 @@
   </div>
 </div>
 
+<div id="flash-overlay" class="flash-overlay"></div>
+
+<script src="vendor/gsap.min.js"></script>
+<script type="module" src="boot-star.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

@@ -80,6 +80,8 @@ const BASE_DECAY = 0.9;
 const MODAL_TIMEOUT_MS = 12000;
 const EVENT_MIN_GAP = 7; // ticks
 const EVENT_CHANCE = 0.22; // per tick after min gap
+const SVGNS = 'http://www.w3.org/2000/svg';
+const REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ---------------- STATE ----------------
 
@@ -87,6 +89,10 @@ let state = null;
 let tickTimer = null;
 let modalTimer = null;
 let audioCtx = null, oscNodes = null, soundOn = false;
+let dialAnim = {};       // per-system {val} proxy objects tweened by GSAP
+let shipEls = {};        // ship.id -> persistent {g, circle, text} SVG elements
+let lastFeedCount = 0;   // for animating only newly-added event feed entries
+let lastKeeperCount = 0; // for animating only newly-added keeper log lines
 
 function freshState() {
   return {
@@ -140,10 +146,28 @@ function bootLog() {
 function startMission() {
   document.getElementById('boot-screen').classList.add('hidden');
   document.getElementById('console').classList.remove('hidden');
+
+  if (window.AshlightBootStar && window.AshlightBootStar.destroy) {
+    try { window.AshlightBootStar.destroy(); } catch (e) { /* no-op */ }
+  }
+
   state = freshState();
+  dialAnim = {};
+  SYSTEMS.forEach(sys => { dialAnim[sys.id] = { val: state.power[sys.id] }; });
+  shipEls = {};
+  lastFeedCount = 0;
+  lastKeeperCount = 0;
+
   renderAll();
   pushLog(KEEPER_LINES.start, 'keeper');
   tickTimer = setInterval(tick, TICK_MS);
+
+  if (!REDUCE_MOTION && window.gsap) {
+    gsap.to('#star-viz', {
+      scale: 1.05, transformOrigin: '50% 50%', duration: 2.2,
+      ease: 'sine.inOut', yoyo: true, repeat: -1,
+    });
+  }
 }
 
 // ---------------- POWER DIALS ----------------
@@ -193,18 +217,32 @@ function totalPower() {
 }
 
 function renderPower() {
+  const circumference = 2 * Math.PI * 21;
   SYSTEMS.forEach(sys => {
-    const val = state.power[sys.id];
-    document.getElementById('pct-' + sys.id).textContent = val;
-    const ring = document.getElementById('ring-' + sys.id);
-    const circumference = 2 * Math.PI * 21;
-    const filled = (val / 100) * circumference;
-    ring.setAttribute('stroke-dasharray', `${filled} ${circumference}`);
+    const target = state.power[sys.id];
+    const proxy = dialAnim[sys.id] || (dialAnim[sys.id] = { val: target });
+    if (REDUCE_MOTION || !window.gsap) {
+      proxy.val = target;
+      applyDialVisual(sys.id, proxy.val, circumference);
+      return;
+    }
+    gsap.to(proxy, {
+      val: target, duration: 0.6, ease: 'power2.out', overwrite: true,
+      onUpdate: () => applyDialVisual(sys.id, proxy.val, circumference),
+    });
   });
   const total = totalPower();
   document.getElementById('power-total-val').textContent = total;
   const warnEl = document.getElementById('power-warn');
   warnEl.textContent = total < 70 ? '⚠ UNDERPOWERED' : '';
+}
+
+function applyDialVisual(sysId, val, circumference) {
+  const filled = (val / 100) * circumference;
+  const ring = document.getElementById('ring-' + sysId);
+  if (ring) ring.setAttribute('stroke-dasharray', `${filled} ${circumference}`);
+  const pctEl = document.getElementById('pct-' + sysId);
+  if (pctEl) pctEl.textContent = Math.round(val);
 }
 
 // ---------------- TICK / SIMULATION ----------------
@@ -249,6 +287,7 @@ function tick() {
   if (state.luminance <= 30 && !state._lowWarned) {
     state._lowWarned = true;
     pushLog(KEEPER_LINES.lowLuminance, 'keeper');
+    screenPulse(0.6);
   }
 
   checkEndConditions();
@@ -279,6 +318,19 @@ function checkEndConditions() {
   }
 }
 
+// ---------------- SCREEN FEEDBACK ----------------
+
+function screenPulse(intensity) {
+  if (REDUCE_MOTION || !window.gsap) return;
+  const flash = document.getElementById('flash-overlay');
+  const consoleEl = document.getElementById('console');
+  if (!flash || !consoleEl) return;
+  gsap.killTweensOf(flash);
+  gsap.fromTo(flash, { opacity: 0.28 * intensity }, { opacity: 0, duration: 0.5, ease: 'power2.out' });
+  gsap.killTweensOf(consoleEl);
+  gsap.fromTo(consoleEl, { x: -6 * intensity }, { x: 0, duration: 0.35, ease: 'elastic.out(1, 0.3)' });
+}
+
 // ---------------- MODAL ----------------
 
 function openModal(evType, ship) {
@@ -305,6 +357,12 @@ function openModal(evType, ship) {
   });
 
   overlay.classList.remove('hidden');
+  const box = overlay.querySelector('.modal-box');
+  if (!REDUCE_MOTION && window.gsap) {
+    gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.25 });
+    gsap.fromTo(box, { opacity: 0, scale: 0.9, y: 10 }, { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: 'back.out(1.6)' });
+  }
+  if (evType.type === 'flare') screenPulse(1);
 
   const bar = document.getElementById('modal-timer-bar');
   bar.style.transition = 'none';
@@ -326,9 +384,21 @@ function resolveModal(choiceIdx, timedOut) {
   ship.hull = Math.max(0, Math.min(100, ship.hull));
   state.luminance = Math.max(0, Math.min(100, state.luminance));
   state.activeModal = null;
-  document.getElementById('modal-overlay').classList.add('hidden');
-  renderAll();
-  checkEndConditions();
+
+  const overlay = document.getElementById('modal-overlay');
+  const box = overlay.querySelector('.modal-box');
+  const finishClose = () => {
+    overlay.classList.add('hidden');
+    if (window.gsap) gsap.set([overlay, box], { clearProps: 'opacity,scale,y' });
+    renderAll();
+    checkEndConditions();
+  };
+  if (REDUCE_MOTION || !window.gsap) {
+    finishClose();
+    return;
+  }
+  gsap.to(box, { opacity: 0, scale: 0.92, duration: 0.2, ease: 'power1.in' });
+  gsap.to(overlay, { opacity: 0, duration: 0.25, delay: 0.05, onComplete: finishClose });
 }
 
 // ---------------- END STATES ----------------
@@ -365,6 +435,15 @@ function endMission(won) {
     <div>FINAL LUMINANCE: ${Math.round(state.luminance)}%</div>
   `;
   overlay.classList.remove('hidden');
+
+  if (REDUCE_MOTION || !window.gsap) return;
+  const tl = gsap.timeline();
+  tl.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.3 })
+    .fromTo(icon, { scale: 0, rotate: -30, opacity: 0 }, { scale: 1, rotate: 0, opacity: 1, duration: 0.6, ease: 'back.out(2)' }, '-=0.1')
+    .fromTo(title, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, '-=0.2')
+    .fromTo(desc, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, '-=0.2')
+    .fromTo(stats.querySelectorAll('div'), { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.3, stagger: 0.08 }, '-=0.15')
+    .fromTo('#restart-btn', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 }, '-=0.1');
 }
 
 // ---------------- RENDER ----------------
@@ -396,12 +475,45 @@ function renderHeader() {
   document.getElementById('star-core').setAttribute('opacity', 0.2 + 0.8 * t);
 }
 
-function renderStarmap() {
+function ensureShipEl(s) {
+  if (shipEls[s.id]) return shipEls[s.id];
   const layer = document.getElementById('ships-layer');
-  layer.innerHTML = '';
+  const g = document.createElementNS(SVGNS, 'g');
+  g.setAttribute('class', 'ship-icon');
+  const circle = document.createElementNS(SVGNS, 'circle');
+  circle.setAttribute('r', 6);
+  circle.setAttribute('class', 'ship-dot');
+  const text = document.createElementNS(SVGNS, 'text');
+  text.setAttribute('class', 'ship-label');
+  text.textContent = s.name;
+  g.appendChild(circle);
+  g.appendChild(text);
+  layer.appendChild(g);
+  const rec = { g, circle, text };
+  shipEls[s.id] = rec;
+  return rec;
+}
+
+function renderStarmap() {
   const cx = 200, cy = 200;
   state.ships.forEach(s => {
-    if (s.status === 'through') return;
+    const existing = shipEls[s.id];
+    if (s.status === 'through') {
+      if (existing) {
+        if (REDUCE_MOTION || !window.gsap) {
+          existing.g.remove();
+          delete shipEls[s.id];
+        } else {
+          gsap.to(existing.g, {
+            opacity: 0, scale: 0.4, duration: 0.5, ease: 'power1.in', transformOrigin: '50% 50%',
+            onComplete: () => { existing.g.remove(); delete shipEls[s.id]; },
+          });
+        }
+      }
+      return;
+    }
+
+    const el = ensureShipEl(s);
     const radius = 180 - (s.progress / 100) * 155;
     const angle = s.angleOffset + state.elapsedTicks * s.angularDrift * 0.05;
     const x = cx + radius * Math.cos(angle);
@@ -410,15 +522,21 @@ function renderStarmap() {
     // Flip the label to whichever side keeps it inside the 0-400 viewBox,
     // so ships near the right or left edge never get their name clipped.
     const onRight = x > cx;
-    const labelX = onRight ? x - 9 : x + 9;
     const anchor = onRight ? 'end' : 'start';
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('class', 'ship-icon');
-    g.innerHTML = `
-      <circle cx="${x}" cy="${y}" r="6" class="ship-dot ${cls}"/>
-      <text x="${labelX}" y="${y + 3}" text-anchor="${anchor}" class="ship-label">${s.name}</text>
-    `;
-    layer.appendChild(g);
+    const labelOffset = onRight ? -9 : 9;
+
+    el.circle.setAttribute('class', `ship-dot ${cls}`);
+    el.text.setAttribute('text-anchor', anchor);
+
+    if (REDUCE_MOTION || !window.gsap) {
+      el.circle.setAttribute('cx', x);
+      el.circle.setAttribute('cy', y);
+      el.text.setAttribute('x', x + labelOffset);
+      el.text.setAttribute('y', y + 3);
+      return;
+    }
+    gsap.to(el.circle, { attr: { cx: x, cy: y }, duration: TICK_MS / 1000, ease: 'none', overwrite: 'auto' });
+    gsap.to(el.text, { attr: { x: x + labelOffset, y: y + 3 }, duration: TICK_MS / 1000, ease: 'none', overwrite: 'auto' });
   });
 }
 
@@ -446,21 +564,36 @@ function renderConvoy() {
 
 function renderFeed() {
   const feed = document.getElementById('event-feed');
+  const nonKeeper = state.log.filter(l => l.kind !== 'keeper');
+  const feedGrew = nonKeeper.length > lastFeedCount;
+  lastFeedCount = nonKeeper.length;
+
   feed.innerHTML = '';
-  state.log.filter(l => l.kind !== 'keeper').slice(-14).reverse().forEach(entry => {
+  nonKeeper.slice(-14).reverse().forEach((entry, idx) => {
     const div = document.createElement('div');
     div.className = 'event-item ' + (entry.kind === 'critical' ? 'critical' : entry.kind === 'warn' ? 'warn' : '');
     div.innerHTML = `<span class="event-time">${entry.time}</span>${entry.text}`;
     feed.appendChild(div);
+    if (idx === 0 && feedGrew && !REDUCE_MOTION && window.gsap) {
+      gsap.from(div, { opacity: 0, x: -14, duration: 0.4, ease: 'power2.out' });
+    }
   });
+
+  const keeperEntries = state.log.filter(l => l.kind === 'keeper').slice(-5);
+  const totalKeeperCount = state.log.filter(l => l.kind === 'keeper').length;
+  const grewKeeper = totalKeeperCount > lastKeeperCount;
+  lastKeeperCount = totalKeeperCount;
 
   const keeper = document.getElementById('keeper-log');
   keeper.innerHTML = '';
-  state.log.filter(l => l.kind === 'keeper').slice(-5).forEach(entry => {
+  keeperEntries.forEach((entry, idx, arr) => {
     const div = document.createElement('div');
     div.className = 'keeper-line';
     div.textContent = '"' + entry.text + '"';
     keeper.appendChild(div);
+    if (idx === arr.length - 1 && grewKeeper && !REDUCE_MOTION && window.gsap) {
+      gsap.from(div, { opacity: 0, y: 8, duration: 0.5, ease: 'power2.out' });
+    }
   });
   keeper.scrollTop = keeper.scrollHeight;
 }
